@@ -1,13 +1,13 @@
-team_name: "PLACEHOLDER - REPLACE WITH YOUR TEAM NAME"
+team_name: "periperi"
 
 primary_contact:
-  name: "PLACEHOLDER - Your Full Name"
-  email: "PLACEHOLDER - your@email.com"
+  name: "Shardul R"
+  email: "shardulrawal2@gmail.com"
   phone: "PLACEHOLDER - +91-XXXXXXXXXX"
 
 team_members:
-  - name: "PLACEHOLDER - Your Full Name"
-    email: "PLACEHOLDER - your@email.com"
+  - name: "Shardul R"
+    email: "shardulrawal2@gmail.com"
     role: "ML Engineer"
 
 github_repo: "https://github.com/shardulrawal2/periperi"
