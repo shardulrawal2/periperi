@@ -12,7 +12,7 @@ team_members:
 
 github_repo: "https://github.com/shardulrawal2/periperi"
 
-sandbox_link: "PLACEHOLDER - https://huggingface.co/spaces/YOUR_USERNAME/redrob-ranker"
+sandbox_link: "https://huggingface.co/spaces/elogmusg/periperi-ranker"
 
 reproduce_command: "python rank.py --candidates ./candidates.jsonl --out ./submission.csv --rrf-k 60"
 
