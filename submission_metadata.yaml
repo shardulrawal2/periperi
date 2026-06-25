@@ -1,0 +1,56 @@
+team_name: "PLACEHOLDER - REPLACE WITH YOUR TEAM NAME"
+
+primary_contact:
+  name: "PLACEHOLDER - Your Full Name"
+  email: "PLACEHOLDER - your@email.com"
+  phone: "PLACEHOLDER - +91-XXXXXXXXXX"
+
+team_members:
+  - name: "PLACEHOLDER - Your Full Name"
+    email: "PLACEHOLDER - your@email.com"
+    role: "ML Engineer"
+
+github_repo: "PLACEHOLDER - https://github.com/YOUR_USERNAME/YOUR_REPO"
+
+sandbox_link: "PLACEHOLDER - https://huggingface.co/spaces/YOUR_USERNAME/redrob-ranker"
+
+reproduce_command: "python rank.py --candidates ./candidates.jsonl --out ./submission.csv --rrf-k 60"
+
+compute:
+  platform: "Local PC"
+  cpu_cores: 8
+  ram_gb: 16
+  python_version: "3.13.5"
+  os: "Windows 11"
+  uses_gpu_for_inference: false
+  has_network_during_ranking: false
+  pre_computation_required: true
+  pre_computation_time_minutes: 2
+
+ai_tools_used:
+  - "Claude (via opencode CLI)"
+
+ai_usage_summary: |
+  Used Claude via opencode CLI for architectural guidance, code review, and debugging.
+  No candidate data was fed to any external LLM. The ranker runs entirely locally.
+
+methodology_summary: |
+  Two-stage candidate ranker for Senior AI Engineer role at Redrob AI.
+  Stage 1 (tight filter): Hard consistency checks screen 100K->~1,700 candidates
+  by checking impossible skill-month ratios, non-AI titles with excessive skills,
+  and AI/ML-relevance via career-history title analysis (not keyword matching).
+  Stage 2 (semantic scoring): ONNX-quantized MiniLM (all-MiniLM-L6-v2) embeds
+  candidate career history text and scores across 6 JD-derived semantic facets:
+  production retrieval/ranking, embeddings/vector search, LLM/fine-tuning,
+  production ML, search/recommendation, and senior product-AI experience.
+  Facet scores fused via Reciprocal Rank Fusion (k=60, selected by grid search).
+  Recruitability applied as multiplicative gate (0.3-1.0), not additive term.
+  Honeypot detection uses impossibility checks only (role-tenure vs career length,
+  skill-month vs experience, expert-zero skills). Total runtime ~45s on CPU.
+  Pre-computation: run python download_model.py once to cache the ONNX model.
+
+declarations:
+  read_submission_spec: true
+  code_is_original_work: true
+  no_collusion: true
+  reproduction_tested: true

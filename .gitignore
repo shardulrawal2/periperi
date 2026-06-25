@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+.submission.csv
+sub_k*.csv
+candidates.jsonl
+sample_candidates.json
+sample_submission.csv
+gt_labels.json
+models/
+_Debug_*
+.DS_Store

@@ -1,0 +1,5 @@
+numpy>=1.24
+onnxruntime>=1.15
+transformers>=4.35
+huggingface-hub>=0.20
+streamlit>=1.28
