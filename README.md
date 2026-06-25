@@ -1,6 +1,6 @@
 ---
 title: Redrob Candidate Ranker
-emoji: 
+emoji: 🚀
 colorFrom: blue
 colorTo: purple
 sdk: streamlit
