@@ -13,9 +13,10 @@ pinned: false
 
 Two-stage semantic candidate ranker for the Redrob Senior AI Engineer challenge.
 
-- **Stage 1 — fast rules filter (100K → ~1,800):** drops honeypots (impossible
-  skill-month ratios, expert-but-zero-tenure skills, non-AI titles padded with
-  skills) and anything clearly off-role. Experience is a *loose* gate here
+- **Stage 1 — fast rules filter (100K → ~1,800):** drops honeypots — profiles
+  that are *self-contradicting*, not merely irrelevant (impossible skill-month
+  ratios, expert proficiency claimed with zero tenure, career history that
+  outlasts stated experience) — and anything clearly off-role. Experience is a *loose* gate here
   (2–20 yrs); fine-grained fit is handled in Stage 2 so strong senior/borderline
   candidates aren't lost.
 - **Stage 2 — semantic scoring:** an ONNX MiniLM (all-MiniLM-L6-v2) embeds each

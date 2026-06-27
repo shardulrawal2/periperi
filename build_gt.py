@@ -6,6 +6,7 @@ import json
 import random
 import sys
 import csv
+from datetime import datetime
 from pathlib import Path
 
 BASE = Path(__file__).parent
@@ -57,23 +58,50 @@ def safe_text(val):
     return str(val).lower().strip()
 
 
+def _parse_date(val):
+    """Parse a YYYY-MM-DD string to datetime, or None if absent/malformed."""
+    try:
+        return datetime.strptime(str(val), '%Y-%m-%d')
+    except (ValueError, TypeError):
+        return None
+
+
 def verified_signal_adjust(c, tier):
     """
-    Nudge the role-fit tier using *verified* platform signals (skill-assessment
-    scores, GitHub activity) that the ranker does NOT use as primary features.
-    This keeps the proxy GT from being a pure mirror of the ranker's own rules,
-    so eval numbers aren't self-confirming. Honeypots (tier 0) are never lifted.
+    Nudge the role-fit tier using verified platform signals that the ranker does
+    NOT key on at all, so the proxy GT can genuinely disagree with the ranker
+    rather than mirror it (avoiding self-confirming eval numbers).
+
+    The ranker (rank.py) scores on skill_assessment_scores, github_activity_score,
+    recruiter_response_rate, open_to_work, recency, education and experience. To
+    stay independent we deliberately AVOID all of those and use third-party
+    market-validation signals instead: recruiter demand (saved_by_recruiters_30d),
+    peer endorsements (endorsements_received) and interview follow-through
+    (interview_completion_rate). Honeypots (tier 0) are never lifted.
     """
     if tier == 0:
         return tier
     sig = c.get('redrob_signals', {})
-    scores = sig.get('skill_assessment_scores', {}) or {}
-    github = sig.get('github_activity_score', -1)
+    saved = sig.get('saved_by_recruiters_30d')
+    endorse = sig.get('endorsements_received')
+    interview = sig.get('interview_completion_rate')
 
-    avg = (sum(scores.values()) / len(scores)) if scores else None
-    if avg is not None and avg >= 80 and github is not None and github > 60 and tier < 4:
+    # Strong, independent market validation → lift one tier (capped below tier 4).
+    strong = (
+        (saved is not None and saved >= 15) and          # ~p90 recruiter demand
+        (endorse is not None and endorse >= 43) and       # ~p75 peer endorsement
+        (interview is None or interview >= 0.62)          # not a no-show
+    )
+    if strong and tier < 4:
         return tier + 1
-    if avg is not None and avg < 35 and tier > 1:
+
+    # Consistently weak third-party traction → drop one tier (floor at 1).
+    weak = (
+        (saved is not None and saved <= 3) and            # ~p25 recruiter demand
+        (endorse is not None and endorse <= 14) and       # ~p25 peer endorsement
+        (interview is not None and interview < 0.48)      # ~p25 follow-through
+    )
+    if weak and tier > 1:
         return tier - 1
     return tier
 
@@ -85,16 +113,27 @@ def label_candidate(c):
     history = c.get('career_history', [])
     title = safe_text(p.get('current_title', ''))
 
+    # Impossibility (honeypot) checks — kept in sync with rank.py detect_honeypot.
+    # These flag self-contradicting profiles, NOT merely irrelevant ones.
     total_skill_months = sum(s.get('duration_months', 0) or 0 for s in skills)
     exp = p.get('years_of_experience', 0) or 0
     exp_months = max(exp * 12, 1)
     if total_skill_months > exp_months * 20 and total_skill_months > 500:
         return 0, "impossible skill-month ratio"
     expert_zero = sum(1 for s in skills if s.get('proficiency') == 'expert' and (s.get('duration_months', 0) or 0) == 0)
-    if expert_zero >= 10:
-        return 0, "expert-zero skills"
-    if any(t in title for t in NON_AI_TITLES) and len(skills) >= 20:
-        return 0, "non-AI title with many skills"
+    if expert_zero >= 3:
+        return 0, "expert proficiency claimed with zero backing"
+    role_years = sum(r.get('duration_months', 0) or 0 for r in history) / 12.0
+    if exp > 0 and role_years > exp * 1.5 and role_years - exp > 3:
+        return 0, "career tenure exceeds stated experience"
+    starts = [_parse_date(r.get('start_date')) for r in history]
+    starts = [d for d in starts if d]
+    if exp > 0 and starts:
+        known = starts + [_parse_date(r.get('end_date')) for r in history]
+        known.append(_parse_date(c.get('redrob_signals', {}).get('last_active_date')))
+        known = [d for d in known if d]
+        if exp > (max(known) - min(starts)).days / 365.25 + 3:
+            return 0, "stated experience exceeds career calendar span"
 
     max_seniority = 0
     has_product_co = False

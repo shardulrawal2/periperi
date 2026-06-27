@@ -33,13 +33,6 @@ SWE_TITLES = {
     'platform engineer', 'infrastructure engineer',
 }
 
-NON_AI_TITLES = {
-    'marketing manager', 'hr manager', 'accountant', 'sales executive',
-    'customer support', 'graphic designer', 'content writer',
-    'business analyst', 'operations manager', 'project manager',
-    'civil engineer', 'mechanical engineer', 'electrical engineer',
-}
-
 CONSULTING_FIRMS = {
     'tcs', 'infosys', 'wipro', 'accenture', 'cognizant',
     'capgemini', 'tech mahindra', 'hcl', 'mindtree', 'hcl technologies',
@@ -126,6 +119,14 @@ def safe_text(val):
 
 def safe(val, default=0):
     return val if val is not None else default
+
+
+def _parse_date(val):
+    """Parse a YYYY-MM-DD string to datetime, or None if absent/malformed."""
+    try:
+        return datetime.strptime(str(val), '%Y-%m-%d')
+    except (ValueError, TypeError):
+        return None
 
 
 # ── Data loading ──
@@ -389,24 +390,65 @@ def score_facets_keyword(c):
 
 
 def detect_honeypot(c):
-    """Impossibility checks. Returns penalty 0-1."""
+    """
+    Impossibility (not irrelevance) checks. Each rule flags a profile whose
+    self-reported facts contradict each other in a way no real candidate can —
+    so it survives the relevance gate but should never reach the top of a ranking.
+    Returns penalty 0-1.
+
+    The four rules below were chosen by scanning every structured contradiction the
+    schema permits and keeping only the ones that fire at *honeypot scale* (tens of
+    profiles, ~0.01-0.03%). Contradictions that fire at population scale (e.g. a
+    single skill's duration exceeding total career: 18%; per-skill endorsements
+    summing above the platform total: 92%) are dataset artifacts, NOT traps, and are
+    deliberately excluded. The rules also avoid title/role: a marketing manager with
+    a long skill list is irrelevant, not impossible — the Stage 1 relevance gate
+    already drops them.
+
+    Explicitly REJECTED rule: "more 'expert' skills than years of experience" fires
+    on 119 profiles, 34 of which are in our own top-100. Concurrent expertise across
+    many tools is normal for strong senior engineers, so it flags breadth, not
+    impossibility — the same conflation the original detector made. Do not add it.
+    """
     p = c['profile']
     skills = c.get('skills', [])
+    history = c.get('career_history', [])
     exp = safe(p.get('years_of_experience', 0))
 
+    # Rule 1: claimed skill-experience-months vastly exceed possible given tenure.
     total_skill_months = sum(s.get('duration_months', 0) or 0 for s in skills)
     exp_months = max(exp * 12, 1)
     if total_skill_months > exp_months * 20 and total_skill_months > 500:
         return 1.0
 
+    # Rule 2: "expert" proficiency claimed with zero months of backing. The spec's
+    # flagship honeypot ("expert in N skills, 0 months"); the seeded population
+    # clusters at 3-5 such skills (nobody legit has even one), so gate at >=3.
     expert_zero = sum(1 for s in skills if s.get('proficiency') == 'expert' and (s.get('duration_months', 0) or 0) == 0)
-    if expert_zero >= 10:
+    if expert_zero >= 3:
         return 1.0
 
-    title = safe_text(p.get('current_title', ''))
-    is_non = any(t in title for t in NON_AI_TITLES)
-    if is_non and len(skills) >= 20:
+    # Rule 3: career-history tenure far exceeds stated years of experience. Roles
+    # can overlap, so we only flag a large, unambiguous contradiction (>1.5x and a
+    # >3yr absolute gap) — you cannot have worked 1.5x longer than you've existed
+    # professionally.
+    role_years = sum(r.get('duration_months', 0) or 0 for r in history) / 12.0
+    if exp > 0 and role_years > exp * 1.5 and role_years - exp > 3:
         return 1.0
+
+    # Rule 4: stated years-of-experience exceed the actual calendar span of the
+    # career. Anchored on the candidate's own latest known date (role dates or last
+    # active) vs their earliest role start; a >3yr surplus is impossible — you can't
+    # have more experience than time has elapsed since your first job.
+    starts = [_parse_date(r.get('start_date')) for r in history]
+    starts = [d for d in starts if d]
+    if exp > 0 and starts:
+        known = starts + [_parse_date(r.get('end_date')) for r in history]
+        known.append(_parse_date(c.get('redrob_signals', {}).get('last_active_date')))
+        known = [d for d in known if d]
+        career_span = (max(known) - min(starts)).days / 365.25
+        if exp > career_span + 3:
+            return 1.0
 
     return 0.0
 
@@ -605,6 +647,16 @@ def rank_candidates(candidates):
             for offset, (cid, _, score, reason) in enumerate(group):
                 top100[i + offset] = (cid, i + offset + 1, score, reason)
         i = j + 1
+
+    # ── Safety guard: no honeypot may reach the final top-100 ──
+    # Submissions with >10% honeypots in the top-100 are auto-disqualified. Stage 1
+    # and the re-rank both already drop honeypots, so this is belt-and-suspenders:
+    # fail loudly rather than ship a DQ'd file if a future change regresses.
+    leaked = [cid for cid, *_ in top100 if detect_honeypot(cand_by_id[cid]) > 0.5]
+    if leaked:
+        raise AssertionError(
+            f"{len(leaked)} honeypot(s) leaked into top-100 (DQ risk): {leaked[:5]}"
+        )
 
     total = time.time() - t0
     print(f"  Total: {total:.1f}s", flush=True)
