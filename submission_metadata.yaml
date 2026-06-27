@@ -14,7 +14,7 @@ github_repo: "https://github.com/shardulrawal2/periperi"
 
 sandbox_link: "https://huggingface.co/spaces/elogmusg/periperi-ranker"
 
-reproduce_command: "python rank.py --candidates ./candidates.jsonl --out ./submission.csv --rrf-k 60"
+reproduce_command: "python rank.py --candidates ./candidates.jsonl --out ./submission.csv"
 
 compute:
   platform: "Local PC"
@@ -26,6 +26,7 @@ compute:
   has_network_during_ranking: false
   pre_computation_required: true
   pre_computation_time_minutes: 2
+  ranking_time_minutes: 3
 
 ai_tools_used:
   - "Claude (via opencode CLI)"
@@ -36,17 +37,23 @@ ai_usage_summary: |
 
 methodology_summary: |
   Two-stage candidate ranker for Senior AI Engineer role at Redrob AI.
-  Stage 1 (tight filter): Hard consistency checks screen 100K->~1,700 candidates
+  Stage 1 (tight filter): Hard consistency checks screen 100K->~1,800 candidates
   by checking impossible skill-month ratios, non-AI titles with excessive skills,
-  and AI/ML-relevance via career-history title analysis (not keyword matching).
-  Stage 2 (semantic scoring): ONNX-quantized MiniLM (all-MiniLM-L6-v2) embeds
-  candidate career history text and scores across 6 JD-derived semantic facets:
-  production retrieval/ranking, embeddings/vector search, LLM/fine-tuning,
-  production ML, search/recommendation, and senior product-AI experience.
-  Facet scores fused via Reciprocal Rank Fusion (k=60, selected by grid search).
-  Recruitability applied as multiplicative gate (0.3-1.0), not additive term.
-  Honeypot detection uses impossibility checks only (role-tenure vs career length,
-  skill-month vs experience, expert-zero skills). Total runtime ~45s on CPU.
+  and AI/ML-relevance via career-history title analysis. Experience is a loose
+  gate (2-20yrs); fine-grained fit is a soft factor in Stage 2 so strong senior
+  or borderline candidates aren't dropped early.
+  Stage 2 (semantic scoring): ONNX MiniLM (all-MiniLM-L6-v2) embeds each candidate
+  as several segments (summary/headline + most recent roles, recency weighted)
+  and scores them against 6 JD-derived semantic facets: production retrieval/
+  ranking, embeddings/vector search, LLM/fine-tuning, production ML, search/
+  recommendation, and senior product-AI experience. Per-facet scores are max-pooled
+  over segments, then fused via a JD-weighted sum of the raw cosine similarities
+  (magnitudes preserved). Final score is adjusted by soft experience fit, an
+  aspirational-language penalty, a recruitability re-rank (0.7-1.0 multiplier so
+  reachability breaks ties within a fit band rather than overriding fit), and a
+  small verified-signal bonus (skill-assessment scores, education tier, GitHub).
+  Honeypot detection uses impossibility checks only (skill-month vs experience,
+  expert-zero skills, non-AI titles with many skills). Total runtime ~3min on CPU.
   Pre-computation: run python download_model.py once to cache the ONNX model.
 
 declarations:

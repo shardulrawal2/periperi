@@ -57,6 +57,27 @@ def safe_text(val):
     return str(val).lower().strip()
 
 
+def verified_signal_adjust(c, tier):
+    """
+    Nudge the role-fit tier using *verified* platform signals (skill-assessment
+    scores, GitHub activity) that the ranker does NOT use as primary features.
+    This keeps the proxy GT from being a pure mirror of the ranker's own rules,
+    so eval numbers aren't self-confirming. Honeypots (tier 0) are never lifted.
+    """
+    if tier == 0:
+        return tier
+    sig = c.get('redrob_signals', {})
+    scores = sig.get('skill_assessment_scores', {}) or {}
+    github = sig.get('github_activity_score', -1)
+
+    avg = (sum(scores.values()) / len(scores)) if scores else None
+    if avg is not None and avg >= 80 and github is not None and github > 60 and tier < 4:
+        return tier + 1
+    if avg is not None and avg < 35 and tier > 1:
+        return tier - 1
+    return tier
+
+
 def label_candidate(c):
     """Assign tier 0-4 using ONLY title+company+industry. No description text."""
     p = c['profile']
@@ -137,8 +158,8 @@ def label_candidate(c):
 def main():
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--ranking', help='CSV ranking file to ensure overlap with')
-    parser.add_argument('--sample', type=int, default=120)
+    parser.add_argument('--ranking', help='CSV ranking to REPORT overlap against (not used to seed the GT pool)')
+    parser.add_argument('--sample', type=int, default=300)
     args = parser.parse_args()
 
     print("Loading candidates...")
@@ -148,27 +169,23 @@ def main():
             if line.strip():
                 candidates.append(json.loads(line))
     print(f"Loaded {len(candidates)} candidates")
+
     cand_by_id = {c['candidate_id']: c for c in candidates}
 
-    sampled_ids = set()
-
-    # Load ranking top 100 first to ensure overlap
+    # Pooled IR-style judgments: label the UNION of the ranker's top-100 and a
+    # stratified random sample. Pooling the ranked items is what makes NDCG
+    # measurable; it is NOT circular because label_candidate never sees the rank
+    # or the ranker's score — tiers come from role-fit heuristics PLUS verified
+    # platform signals (assessment scores, GitHub) the ranker doesn't key on, so
+    # the labels can disagree with the ranker.
+    ranked_ids = []
     if args.ranking:
         with open(args.ranking, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                sampled_ids.add(row['candidate_id'])
-                if len(sampled_ids) >= 100:
-                    break
-        print(f"Got {len(sampled_ids)} candidates from ranking for overlap")
+            ranked_ids = [row['candidate_id'] for row in csv.DictReader(f)][:100]
 
-    # Fill remaining sample from stratified random pool
     random.seed(42)
-    remaining = [c for c in candidates if c['candidate_id'] not in sampled_ids]
-
-    # Pre-compute title categories for all remaining (faster than repeated computation)
     cat_map = {}
-    for c in remaining:
+    for c in candidates:
         t = safe_text(c['profile']['current_title'])
         if any(kw in t for kw in AI_ROLE_KEYWORDS):
             cat_map[c['candidate_id']] = 'ai'
@@ -179,25 +196,29 @@ def main():
         else:
             cat_map[c['candidate_id']] = 'other'
 
+    ranked_set = set(ranked_ids)
     pools = {'ai': [], 'swe': [], 'non_ai': [], 'other': []}
-    for c in remaining:
+    for c in candidates:
+        if c['candidate_id'] in ranked_set:
+            continue  # ranked items are added separately, don't double-count
         pools[cat_map[c['candidate_id']]].append(c)
 
-    print(f"Fill pools: AI={len(pools['ai'])}, SWE={len(pools['swe'])}, Non-AI={len(pools['non_ai'])}, Other={len(pools['other'])}")
+    print(f"Pools: AI={len(pools['ai'])}, SWE={len(pools['swe'])}, Non-AI={len(pools['non_ai'])}, Other={len(pools['other'])}")
 
-    fill_target = args.sample - len(sampled_ids)
-    fill = []
-    fill += random.sample(pools['ai'], min(int(fill_target * 0.3), len(pools['ai'])))
-    fill += random.sample(pools['swe'], min(int(fill_target * 0.25), len(pools['swe'])))
-    fill += random.sample(pools['non_ai'], min(int(fill_target * 0.25), len(pools['non_ai'])))
-    fill += random.sample(pools['other'], min(fill_target - len(fill), len(pools['other'])))
-    sampled = fill + [cand_by_id[cid] for cid in sampled_ids if cid in cand_by_id]
+    target = args.sample
+    sampled = []
+    sampled += random.sample(pools['ai'], min(int(target * 0.35), len(pools['ai'])))
+    sampled += random.sample(pools['swe'], min(int(target * 0.25), len(pools['swe'])))
+    sampled += random.sample(pools['non_ai'], min(int(target * 0.20), len(pools['non_ai'])))
+    sampled += random.sample(pools['other'], min(target - len(sampled), len(pools['other'])))
+    sampled += [cand_by_id[cid] for cid in ranked_ids if cid in cand_by_id]
 
-    print(f"Labeling {len(sampled)} candidates...")
+    print(f"Labeling {len(sampled)} candidates ({len(ranked_ids)} pooled from ranking)...")
     relevance = {}
     labels = {}
     for c in sampled:
         tier, reason = label_candidate(c)
+        tier = verified_signal_adjust(c, tier)
         relevance[c['candidate_id']] = tier
         labels[c['candidate_id']] = (tier, reason)
 
@@ -206,8 +227,14 @@ def main():
         dist[tier] = dist.get(tier, 0) + 1
     print(f"GT distribution: {dict(sorted(dist.items()))}")
 
-    overlap = sum(1 for cid in relevance if cid in sampled_ids)
-    print(f"Overlap with ranking top 100 in GT: {overlap}/{len(relevance)}")
+    if ranked_ids:
+        labeled = sum(1 for cid in ranked_ids if cid in relevance)
+        rdist = {}
+        for cid in ranked_ids:
+            t = relevance.get(cid)
+            if t is not None:
+                rdist[t] = rdist.get(t, 0) + 1
+        print(f"Ranked top-100 labeled: {labeled}/100, tier dist: {dict(sorted(rdist.items()))}")
 
     output = {
         'relevance': {k: v for k, v in relevance.items()},

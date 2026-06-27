@@ -21,9 +21,6 @@ st.markdown("""
 Upload a small candidate sample (≤100 candidates) to verify the ranking system works.
 """)
 
-st.sidebar.header("Settings")
-rrf_k = st.sidebar.slider("RRF k-constant", min_value=10, max_value=150, value=60, step=10)
-
 st.sidebar.header("About")
 st.sidebar.info(
     "This sandbox runs the same ranker used to produce the hackathon submission. "
@@ -57,7 +54,7 @@ if uploaded_file is not None:
         with st.spinner("Ranking candidates..."):
             start = time.time()
             from rank import rank_candidates
-            top100 = rank_candidates(candidates, rrf_k=rrf_k)
+            top100 = rank_candidates(candidates)
             elapsed = time.time() - start
 
         st.success(f"Ranking complete in {elapsed:.2f}s")

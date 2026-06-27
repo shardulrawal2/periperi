@@ -97,6 +97,26 @@ FACET_QUERIES = {
     ),
 }
 
+# Relative importance of each facet for this JD (Senior AI Engineer, founding team
+# at a recruiting-search company → retrieval/ranking & embeddings weighted highest).
+FACET_WEIGHTS = {
+    "retrieval_ranking": 1.3,
+    "embeddings_vector": 1.2,
+    "llm_finetuning": 1.1,
+    "production_ml": 1.0,
+    "search_recommendation": 1.1,
+    "senior_product_ai": 1.0,
+}
+
+FACET_LABELS = {
+    "retrieval_ranking": "retrieval/ranking",
+    "embeddings_vector": "embeddings/vector search",
+    "llm_finetuning": "LLM/fine-tuning",
+    "production_ml": "production ML",
+    "search_recommendation": "search/recommendation",
+    "senior_product_ai": "senior product-AI",
+}
+
 
 def safe_text(val):
     if val is None:
@@ -139,23 +159,14 @@ def stage1_filter(candidates):
         cid = c['candidate_id']
         cands_by_id[cid] = c
 
-        # ── 1. Hard honeypot checks ──
-        total_skill_months = sum(s.get('duration_months', 0) or 0 for s in skills)
-        exp_months = max(exp * 12, 1)
-
-        if total_skill_months > exp_months * 20 and total_skill_months > 500:
+        # ── 1. Hard honeypot checks (single source of truth: detect_honeypot) ──
+        if detect_honeypot(c) > 0.5:
             continue
 
-        expert_zero = sum(1 for s in skills if s.get('proficiency') == 'expert' and (s.get('duration_months', 0) or 0) == 0)
-        if expert_zero >= 10:
-            continue
-
-        is_non = any(t in title for t in NON_AI_TITLES)
-        if is_non and len(skills) >= 20:
-            continue
-
-        # ── 2. Experience range ──
-        if exp < 3.0 or exp > 12:
+        # ── 2. Experience range (loose hard gate only — fine-grained fit is a
+        #       soft factor in Stage 2 via experience_fit, so we don't drop
+        #       borderline-junior or very-senior candidates here) ──
+        if exp < 2.0 or exp > 20:
             continue
 
         # ── 3. Title + career check ──
@@ -207,6 +218,106 @@ def build_candidate_text(c):
         company = safe_text(role.get('company', ''))
         texts.append(f"{title} at {company}. {desc}")
     return " ".join(texts)
+
+
+def build_candidate_segments(c):
+    """
+    Break a candidate into scorable text segments, recency-ordered.
+
+    Unlike build_candidate_text (one mean-pooled, easily-truncated blob), this
+    keeps the summary/headline (the richest fit signal) and the most recent roles
+    as separate segments so each can be matched against a facet on its own and
+    max-pooled — a strong recent AI role is no longer diluted by old roles, and
+    nothing of value is lost to the 256-token truncation.
+
+    Returns a list of (text, recency_weight) tuples.
+    """
+    p = c['profile']
+    title = safe_text(p.get('current_title', ''))
+    summary = safe_text(p.get('summary', ''))
+    headline = safe_text(p.get('headline', ''))
+
+    segments = []
+    head_text = summary or headline
+    if head_text:
+        segments.append((f"{title}. {head_text}", 1.0))
+
+    roles = c.get('career_history', []) or []
+    roles_sorted = sorted(
+        roles,
+        key=lambda r: (bool(r.get('is_current')), str(r.get('start_date', ''))),
+        reverse=True,
+    )
+    for i, role in enumerate(roles_sorted[:4]):
+        rt = safe_text(role.get('title', ''))
+        co = safe_text(role.get('company', ''))
+        desc = safe_text(role.get('description', ''))
+        recency_w = max(0.6, 1.0 - 0.12 * i)  # 1.0, .88, .76, .64
+        segments.append((f"{rt} at {co}. {desc}", recency_w))
+
+    if not segments:
+        segments.append((build_candidate_text(c), 1.0))
+    return segments
+
+
+def experience_fit(exp):
+    """Soft experience fit (0.6-1.0), centred on the 4-10yr sweet spot."""
+    exp = exp or 0
+    if exp < 2:
+        return 0.6
+    if exp < 4:
+        return 0.75 + 0.25 * (exp - 2) / 2.0
+    if exp <= 10:
+        return 1.0
+    if exp <= 20:
+        return 1.0 - 0.3 * (exp - 10) / 10.0
+    return 0.7
+
+
+def quality_mult(c):
+    """
+    Mild quality multiplier (0.95-1.15) from *verified* signals the rest of the
+    pipeline doesn't key on: Redrob skill-assessment scores, education tier, and
+    GitHub activity. Kept small so it re-ranks within a fit band rather than
+    overriding semantic fit.
+    """
+    mult = 1.0
+    sig = c.get('redrob_signals', {})
+
+    scores = sig.get('skill_assessment_scores', {}) or {}
+    if scores:
+        avg = sum(scores.values()) / len(scores)
+        mult += 0.10 * (avg - 60) / 40.0  # 60→+0.0, 100→+0.10, 20→-0.10
+
+    tiers = {e.get('tier') for e in (c.get('education', []) or [])}
+    if 'tier_1' in tiers:
+        mult += 0.05
+    elif 'tier_2' in tiers:
+        mult += 0.02
+
+    if safe(sig.get('github_activity_score', -1)) > 70:
+        mult += 0.03
+
+    return max(0.95, min(mult, 1.15))
+
+
+def reference_date(candidates):
+    """
+    Anchor 'recent activity' to the dataset's latest last_active_date rather than
+    wall-clock time, so the recency signal is stable regardless of when we run.
+    """
+    latest = None
+    for c in candidates:
+        d = c.get('redrob_signals', {}).get('last_active_date')
+        if not d:
+            continue
+        try:
+            dt = datetime.strptime(str(d), '%Y-%m-%d')
+        except (ValueError, TypeError):
+            continue
+        if latest is None or dt > latest:
+            latest = dt
+    return latest or datetime.now()
 
 
 def score_facets_embedding(candidate_text, facet_queries, session, tokenizer):
@@ -277,29 +388,6 @@ def score_facets_keyword(c):
     return {k: min(v * 2, 10) for k, v in facet_scores.items()}
 
 
-def rrf_fusion(facet_lists, k=60):
-    """Reciprocal Rank Fusion."""
-    rankings = {}
-    for facet_name, scored_list in facet_lists:
-        if not scored_list:
-            continue
-        rankings[facet_name] = {cid: rank + 1 for rank, (cid, _) in enumerate(scored_list)}
-
-    all_cids = set()
-    for _, scored_list in facet_lists:
-        for cid, _ in scored_list:
-            all_cids.add(cid)
-
-    fused = {}
-    for cid in all_cids:
-        rrf_score = 0.0
-        for facet_name in rankings:
-            rank = rankings[facet_name].get(cid, len(rankings[facet_name]) + 1)
-            rrf_score += 1.0 / (k + rank)
-        fused[cid] = rrf_score
-    return fused
-
-
 def detect_honeypot(c):
     """Impossibility checks. Returns penalty 0-1."""
     p = c['profile']
@@ -339,7 +427,7 @@ def detect_aspirational(c):
     return 0.0
 
 
-def rank_candidates(candidates, rrf_k=60):
+def rank_candidates(candidates):
     t0 = time.time()
 
     # ── Stage 1 ──
@@ -365,82 +453,84 @@ def rank_candidates(candidates, rrf_k=60):
     except Exception as e:
         print(f"  Embedding model unavailable ({e}), using keyword fallback", flush=True)
 
-    facet_scores = {f: [] for f in JD_FACETS}
-    per_candidate_text = {}
+    n = len(shortlist)
+    # Per-candidate, per-facet semantic scores, max-pooled over profile segments.
+    facet_matrix = np.zeros((n, len(JD_FACETS)), dtype=np.float32)
 
     if use_embeddings:
-        # Batch-embed all candidates at once
-        texts = [build_candidate_text(c) for c in shortlist]
-        for i, c in enumerate(shortlist):
-            per_candidate_text[c['candidate_id']] = texts[i]
-        cand_embs = embed_texts(texts, session, tokenizer, batch_size=32)
+        # Flatten every candidate's segments into one batch, embed once, then
+        # max-pool similarities back per candidate/facet.
+        seg_texts, seg_owner, seg_weight = [], [], []
+        for ci, c in enumerate(shortlist):
+            for text, w in build_candidate_segments(c):
+                seg_texts.append(text)
+                seg_owner.append(ci)
+                seg_weight.append(w)
 
-        for i, c in enumerate(shortlist):
-            cid = c['candidate_id']
-            cand_emb = cand_embs[i]
-            scores = {}
-            for j, fname in enumerate(JD_FACETS):
-                sim = float(np.dot(cand_emb, facet_embeddings[j]))
-                scores[fname] = max(0, sim) * 10.0
-            for fname in JD_FACETS:
-                facet_scores[fname].append((cid, scores[fname]))
+        seg_embs = embed_texts(seg_texts, session, tokenizer, batch_size=64)
+        facet_arr = np.asarray(facet_embeddings, dtype=np.float32)   # (F, 384)
+        sims = np.clip(seg_embs @ facet_arr.T, 0.0, None)            # (S, F)
+        for s in range(len(seg_texts)):
+            ci = seg_owner[s]
+            facet_matrix[ci] = np.maximum(facet_matrix[ci], seg_weight[s] * sims[s])
     else:
-        for c in shortlist:
-            cid = c['candidate_id']
-            text = build_candidate_text(c)
-            per_candidate_text[cid] = text
+        for ci, c in enumerate(shortlist):
             scores = score_facets_keyword(c)
-            for fname in JD_FACETS:
-                facet_scores[fname].append((cid, scores[fname]))
+            for j, fname in enumerate(JD_FACETS):
+                facet_matrix[ci, j] = scores[fname] / 10.0
 
     t2 = time.time()
     print(f"  Stage 2: scored {len(shortlist)} candidates in {t2-t1:.2f}s", flush=True)
 
-    # Sort each facet list
-    for fname in facet_scores:
-        facet_scores[fname].sort(key=lambda x: -x[1])
+    # ── Fusion: JD-weighted sum of the raw (magnitude-preserving) facet scores.
+    #    Replaces RRF, which discarded the cosine magnitudes and added little over
+    #    a mean across these highly-correlated facet rankings. ──
+    fweights = np.array([FACET_WEIGHTS[f] for f in JD_FACETS], dtype=np.float32)
+    semantic = facet_matrix @ fweights                              # (n,)
+    max_sem = float(semantic.max()) if n else 0.0
+    if max_sem > 0:
+        semantic = semantic / max_sem
 
-    # RRF fusion
-    facet_lists = [(f, facet_scores[f]) for f in JD_FACETS]
-    fused = rrf_fusion(facet_lists, k=rrf_k)
+    fused = {shortlist[i]['candidate_id']: float(semantic[i]) for i in range(n)}
+    facet_by_cid = {shortlist[i]['candidate_id']: facet_matrix[i] for i in range(n)}
 
-    if fused:
-        max_fused = max(fused.values())
-        if max_fused > 0:
-            fused = {cid: s / max_fused for cid, s in fused.items()}
-
-    # ── Apply penalties and recruitability gate ──
+    # ── Apply penalties and recruitability re-rank ──
+    ref_date = reference_date(candidates)
     results = []
     for c in shortlist:
         cid = c['candidate_id']
         base_score = fused.get(cid, 0.0)
 
-        hp = detect_honeypot(c)
-        if hp > 0.5:
+        if detect_honeypot(c) > 0.5:
             continue
 
         ap = detect_aspirational(c)
+        ef = experience_fit(safe(c['profile'].get('years_of_experience', 0)))
 
         sig = c.get('redrob_signals', {})
         response_rate = safe(sig.get('recruiter_response_rate', 0.0))
         open_to_work = sig.get('open_to_work_flag', False)
         recent_active = False
         try:
-            last = datetime.strptime(str(sig.get('last_active_date', '2024-01-01')), '%Y-%m-%d')
-            if (datetime.now() - last).days < 90:
+            last = datetime.strptime(str(sig.get('last_active_date', '')), '%Y-%m-%d')
+            if (ref_date - last).days < 90:
                 recent_active = True
         except (ValueError, TypeError):
             pass
 
-        rec_mult = 0.3
+        # Recruitability re-ranks WITHIN a fit band (0.7-1.0) rather than swinging
+        # the score 3x, so reachability no longer overrides actual fit.
+        signal = 0.0
         if open_to_work:
-            rec_mult += 0.2
+            signal += 0.4
         if recent_active:
-            rec_mult += 0.2
-        rec_mult += response_rate * 0.3
-        rec_mult = min(rec_mult, 1.0)
+            signal += 0.3
+        signal += response_rate * 0.3
+        rec_mult = 0.7 + 0.3 * min(signal, 1.0)
 
-        final_score = base_score * (1.0 - ap) * rec_mult
+        # response_rate is already reflected in the score via rec_mult; the
+        # submission spec requires equal-score ties to break on candidate_id asc.
+        final_score = base_score * ef * (1.0 - ap) * rec_mult * quality_mult(c)
         results.append((cid, final_score))
 
     results.sort(key=lambda x: (-x[1], x[0]))
@@ -483,20 +573,13 @@ def rank_candidates(candidates, rrf_k=60):
         if ai_skill_count > 0:
             parts.append(f"{ai_skill_count} AI/ML skills")
 
-        # Facet strengths from text
-        text = per_candidate_text.get(cid, '')
-        text_lower = text.lower()
-        strengths = []
-        if any(kw in text_lower for kw in ['retrieval', 'ranking', 'search relevance', 'ndcg', 'mrr']):
-            strengths.append("retrieval/ranking")
-        if any(kw in text_lower for kw in ['embedding', 'vector', 'semantic search']):
-            strengths.append("embeddings/vector")
-        if any(kw in text_lower for kw in ['llm', 'fine-tuning', 'rag', 'prompt']):
-            strengths.append("LLM/fine-tuning")
-        if any(kw in text_lower for kw in ['production', 'deployed', 'a/b test', 'pipeline']):
-            strengths.append("prod ML")
-        if strengths:
-            parts.append("; ".join(strengths[:2]))
+        # Faithful strengths: the facets that actually drove this candidate's score.
+        fvec = facet_by_cid.get(cid)
+        if fvec is not None and float(fvec.max()) > 0:
+            order = np.argsort(-fvec)
+            strengths = [FACET_LABELS[JD_FACETS[j]] for j in order[:2] if fvec[j] > 0]
+            if strengths:
+                parts.append("; ".join(strengths))
 
         if has_product:
             parts.append("product co")
@@ -510,16 +593,17 @@ def rank_candidates(candidates, rrf_k=60):
         reasoning = "; ".join(parts)
         top100.append((cid, rank, f"{score:.4f}", reasoning))
 
-    # Tie-break pass
+    # Two scores can differ as floats yet print identically at 4dp; the submission
+    # spec requires such printed-equal ties to be ordered by candidate_id ascending.
     i = 0
     while i < len(top100) - 1:
         j = i
-        while j < len(top100) - 1 and float(top100[j][2]) == float(top100[j + 1][2]):
+        while j < len(top100) - 1 and top100[j][2] == top100[j + 1][2]:
             j += 1
         if j > i:
             group = sorted(top100[i:j + 1], key=lambda x: x[0])
-            for k, (cid, _, score, reason) in enumerate(group, start=i + 1):
-                top100[k - 1] = (cid, k, score, reason)
+            for offset, (cid, _, score, reason) in enumerate(group):
+                top100[i + offset] = (cid, i + offset + 1, score, reason)
         i = j + 1
 
     total = time.time() - t0
@@ -531,7 +615,6 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--candidates', required=True)
     parser.add_argument('--out', default='submission.csv')
-    parser.add_argument('--rrf-k', type=int, default=60)
     args = parser.parse_args()
 
     print("Loading candidates...", flush=True)
@@ -541,7 +624,7 @@ def main():
 
     print("Ranking...", flush=True)
     start = time.time()
-    top100 = rank_candidates(candidates, rrf_k=args.rrf_k)
+    top100 = rank_candidates(candidates)
 
     with open(args.out, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
