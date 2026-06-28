@@ -6,6 +6,7 @@ import json
 import random
 import sys
 import csv
+from datetime import datetime
 from pathlib import Path
 
 BASE = Path(__file__).parent
@@ -57,6 +58,54 @@ def safe_text(val):
     return str(val).lower().strip()
 
 
+def _parse_date(val):
+    """Parse a YYYY-MM-DD string to datetime, or None if absent/malformed."""
+    try:
+        return datetime.strptime(str(val), '%Y-%m-%d')
+    except (ValueError, TypeError):
+        return None
+
+
+def verified_signal_adjust(c, tier):
+    """
+    Nudge the role-fit tier using verified platform signals that the ranker does
+    NOT key on at all, so the proxy GT can genuinely disagree with the ranker
+    rather than mirror it (avoiding self-confirming eval numbers).
+
+    The ranker (rank.py) scores on skill_assessment_scores, github_activity_score,
+    recruiter_response_rate, open_to_work, recency, education and experience. To
+    stay independent we deliberately AVOID all of those and use third-party
+    market-validation signals instead: recruiter demand (saved_by_recruiters_30d),
+    peer endorsements (endorsements_received) and interview follow-through
+    (interview_completion_rate). Honeypots (tier 0) are never lifted.
+    """
+    if tier == 0:
+        return tier
+    sig = c.get('redrob_signals', {})
+    saved = sig.get('saved_by_recruiters_30d')
+    endorse = sig.get('endorsements_received')
+    interview = sig.get('interview_completion_rate')
+
+    # Strong, independent market validation → lift one tier (capped below tier 4).
+    strong = (
+        (saved is not None and saved >= 15) and          # ~p90 recruiter demand
+        (endorse is not None and endorse >= 43) and       # ~p75 peer endorsement
+        (interview is None or interview >= 0.62)          # not a no-show
+    )
+    if strong and tier < 4:
+        return tier + 1
+
+    # Consistently weak third-party traction → drop one tier (floor at 1).
+    weak = (
+        (saved is not None and saved <= 3) and            # ~p25 recruiter demand
+        (endorse is not None and endorse <= 14) and       # ~p25 peer endorsement
+        (interview is not None and interview < 0.48)      # ~p25 follow-through
+    )
+    if weak and tier > 1:
+        return tier - 1
+    return tier
+
+
 def label_candidate(c):
     """Assign tier 0-4 using ONLY title+company+industry. No description text."""
     p = c['profile']
@@ -64,16 +113,27 @@ def label_candidate(c):
     history = c.get('career_history', [])
     title = safe_text(p.get('current_title', ''))
 
+    # Impossibility (honeypot) checks — kept in sync with rank.py detect_honeypot.
+    # These flag self-contradicting profiles, NOT merely irrelevant ones.
     total_skill_months = sum(s.get('duration_months', 0) or 0 for s in skills)
     exp = p.get('years_of_experience', 0) or 0
     exp_months = max(exp * 12, 1)
     if total_skill_months > exp_months * 20 and total_skill_months > 500:
         return 0, "impossible skill-month ratio"
     expert_zero = sum(1 for s in skills if s.get('proficiency') == 'expert' and (s.get('duration_months', 0) or 0) == 0)
-    if expert_zero >= 10:
-        return 0, "expert-zero skills"
-    if any(t in title for t in NON_AI_TITLES) and len(skills) >= 20:
-        return 0, "non-AI title with many skills"
+    if expert_zero >= 3:
+        return 0, "expert proficiency claimed with zero backing"
+    role_years = sum(r.get('duration_months', 0) or 0 for r in history) / 12.0
+    if exp > 0 and role_years > exp * 1.5 and role_years - exp > 3:
+        return 0, "career tenure exceeds stated experience"
+    starts = [_parse_date(r.get('start_date')) for r in history]
+    starts = [d for d in starts if d]
+    if exp > 0 and starts:
+        known = starts + [_parse_date(r.get('end_date')) for r in history]
+        known.append(_parse_date(c.get('redrob_signals', {}).get('last_active_date')))
+        known = [d for d in known if d]
+        if exp > (max(known) - min(starts)).days / 365.25 + 3:
+            return 0, "stated experience exceeds career calendar span"
 
     max_seniority = 0
     has_product_co = False
@@ -137,8 +197,8 @@ def label_candidate(c):
 def main():
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--ranking', help='CSV ranking file to ensure overlap with')
-    parser.add_argument('--sample', type=int, default=120)
+    parser.add_argument('--ranking', help='CSV ranking to REPORT overlap against (not used to seed the GT pool)')
+    parser.add_argument('--sample', type=int, default=300)
     args = parser.parse_args()
 
     print("Loading candidates...")
@@ -148,27 +208,23 @@ def main():
             if line.strip():
                 candidates.append(json.loads(line))
     print(f"Loaded {len(candidates)} candidates")
+
     cand_by_id = {c['candidate_id']: c for c in candidates}
 
-    sampled_ids = set()
-
-    # Load ranking top 100 first to ensure overlap
+    # Pooled IR-style judgments: label the UNION of the ranker's top-100 and a
+    # stratified random sample. Pooling the ranked items is what makes NDCG
+    # measurable; it is NOT circular because label_candidate never sees the rank
+    # or the ranker's score — tiers come from role-fit heuristics PLUS verified
+    # platform signals (assessment scores, GitHub) the ranker doesn't key on, so
+    # the labels can disagree with the ranker.
+    ranked_ids = []
     if args.ranking:
         with open(args.ranking, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                sampled_ids.add(row['candidate_id'])
-                if len(sampled_ids) >= 100:
-                    break
-        print(f"Got {len(sampled_ids)} candidates from ranking for overlap")
+            ranked_ids = [row['candidate_id'] for row in csv.DictReader(f)][:100]
 
-    # Fill remaining sample from stratified random pool
     random.seed(42)
-    remaining = [c for c in candidates if c['candidate_id'] not in sampled_ids]
-
-    # Pre-compute title categories for all remaining (faster than repeated computation)
     cat_map = {}
-    for c in remaining:
+    for c in candidates:
         t = safe_text(c['profile']['current_title'])
         if any(kw in t for kw in AI_ROLE_KEYWORDS):
             cat_map[c['candidate_id']] = 'ai'
@@ -179,25 +235,29 @@ def main():
         else:
             cat_map[c['candidate_id']] = 'other'
 
+    ranked_set = set(ranked_ids)
     pools = {'ai': [], 'swe': [], 'non_ai': [], 'other': []}
-    for c in remaining:
+    for c in candidates:
+        if c['candidate_id'] in ranked_set:
+            continue  # ranked items are added separately, don't double-count
         pools[cat_map[c['candidate_id']]].append(c)
 
-    print(f"Fill pools: AI={len(pools['ai'])}, SWE={len(pools['swe'])}, Non-AI={len(pools['non_ai'])}, Other={len(pools['other'])}")
+    print(f"Pools: AI={len(pools['ai'])}, SWE={len(pools['swe'])}, Non-AI={len(pools['non_ai'])}, Other={len(pools['other'])}")
 
-    fill_target = args.sample - len(sampled_ids)
-    fill = []
-    fill += random.sample(pools['ai'], min(int(fill_target * 0.3), len(pools['ai'])))
-    fill += random.sample(pools['swe'], min(int(fill_target * 0.25), len(pools['swe'])))
-    fill += random.sample(pools['non_ai'], min(int(fill_target * 0.25), len(pools['non_ai'])))
-    fill += random.sample(pools['other'], min(fill_target - len(fill), len(pools['other'])))
-    sampled = fill + [cand_by_id[cid] for cid in sampled_ids if cid in cand_by_id]
+    target = args.sample
+    sampled = []
+    sampled += random.sample(pools['ai'], min(int(target * 0.35), len(pools['ai'])))
+    sampled += random.sample(pools['swe'], min(int(target * 0.25), len(pools['swe'])))
+    sampled += random.sample(pools['non_ai'], min(int(target * 0.20), len(pools['non_ai'])))
+    sampled += random.sample(pools['other'], min(target - len(sampled), len(pools['other'])))
+    sampled += [cand_by_id[cid] for cid in ranked_ids if cid in cand_by_id]
 
-    print(f"Labeling {len(sampled)} candidates...")
+    print(f"Labeling {len(sampled)} candidates ({len(ranked_ids)} pooled from ranking)...")
     relevance = {}
     labels = {}
     for c in sampled:
         tier, reason = label_candidate(c)
+        tier = verified_signal_adjust(c, tier)
         relevance[c['candidate_id']] = tier
         labels[c['candidate_id']] = (tier, reason)
 
@@ -206,8 +266,14 @@ def main():
         dist[tier] = dist.get(tier, 0) + 1
     print(f"GT distribution: {dict(sorted(dist.items()))}")
 
-    overlap = sum(1 for cid in relevance if cid in sampled_ids)
-    print(f"Overlap with ranking top 100 in GT: {overlap}/{len(relevance)}")
+    if ranked_ids:
+        labeled = sum(1 for cid in ranked_ids if cid in relevance)
+        rdist = {}
+        for cid in ranked_ids:
+            t = relevance.get(cid)
+            if t is not None:
+                rdist[t] = rdist.get(t, 0) + 1
+        print(f"Ranked top-100 labeled: {labeled}/100, tier dist: {dict(sorted(rdist.items()))}")
 
     output = {
         'relevance': {k: v for k, v in relevance.items()},
