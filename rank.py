@@ -629,6 +629,9 @@ def rank_candidates(candidates):
             parts.append(f"{resp:.0%} resp rate")
         if saved > 10:
             parts.append(f"saved {saved}x")
+        search = safe(sig.get('search_appearance_30d', 0))
+        if search > 500:
+            parts.append(f"search {search}x")
         if github > 50:
             parts.append("active GitHub")
 
