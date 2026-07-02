@@ -1,0 +1,101 @@
+candidate_id,rank,score,reasoning
+CAND_0041669,1,1.0997,Recommendation Systems Engineer with 8.0yrs; 4 AI/ML skills; retrieval/ranking; senior product-AI; product co; 77% resp rate; saved 37x; active GitHub
+CAND_0066999,2,1.0667,Recommendation Systems Engineer with 5.9yrs; 6 AI/ML skills; senior product-AI; retrieval/ranking; product co; 63% resp rate; saved 29x; search 619x; active GitHub
+CAND_0061265,3,1.0518,Recommendation Systems Engineer with 6.6yrs; 6 AI/ML skills; production ML; retrieval/ranking; product co; 94% resp rate; saved 24x; active GitHub
+CAND_0081053,4,1.0433,NLP Engineer with 5.4yrs; 4 AI/ML skills; production ML; senior product-AI; product co; 83% resp rate; saved 40x; active GitHub
+CAND_0098846,5,1.0431,AI Engineer with 7.6yrs; 6 AI/ML skills; senior product-AI; production ML; product co; 62% resp rate; saved 13x; search 747x; active GitHub
+CAND_0051615,6,1.0354,Search Engineer with 4.6yrs; 8 AI/ML skills; retrieval/ranking; production ML; product co; 88% resp rate; saved 42x; search 693x; active GitHub
+CAND_0014440,7,1.0259,Recommendation Systems Engineer with 6.4yrs; 6 AI/ML skills; retrieval/ranking; search/recommendation; product co; 64% resp rate; saved 33x; search 735x; active GitHub
+CAND_0055960,8,1.0243,AI Specialist with 4.9yrs; 6 AI/ML skills; senior product-AI; production ML; product co; 89% resp rate; saved 26x; search 688x; active GitHub
+CAND_0091909,9,1.0229,Machine Learning Engineer with 6.9yrs; 6 AI/ML skills; senior product-AI; production ML; product co; 65% resp rate; saved 64x
+CAND_0054829,10,1.0171,Computer Vision Engineer with 5.7yrs; 3 AI/ML skills; senior product-AI; production ML; product co; 75% resp rate; saved 38x
+CAND_0076163,11,1.0168,NLP Engineer with 6.9yrs; 10 AI/ML skills; senior product-AI; production ML; product co; 84% resp rate; saved 62x; active GitHub
+CAND_0042100,12,1.0144,Machine Learning Engineer with 7.3yrs; 8 AI/ML skills; senior product-AI; retrieval/ranking; product co; 87% resp rate; saved 11x
+CAND_0035879,13,1.0140,AI Research Engineer with 4.5yrs; 3 AI/ML skills; senior product-AI; search/recommendation; product co; 82% resp rate; saved 37x; search 763x; active GitHub
+CAND_0078492,14,1.0106,Recommendation Systems Engineer with 5.1yrs; 8 AI/ML skills; retrieval/ranking; senior product-AI; product co; 70% resp rate; search 1014x
+CAND_0095207,15,1.0099,Computer Vision Engineer with 4.0yrs; 6 AI/ML skills; senior product-AI; production ML; product co; 72% resp rate; active GitHub
+CAND_0050876,16,1.0077,Applied ML Engineer with 6.0yrs; 8 AI/ML skills; retrieval/ranking; senior product-AI; product co; 67% resp rate; active GitHub
+CAND_0038099,17,1.0062,Junior ML Engineer with 5.4yrs; 5 AI/ML skills; senior product-AI; production ML; product co; 81% resp rate; saved 30x
+CAND_0004402,18,1.0044,AI Research Engineer with 6.0yrs; 5 AI/ML skills; senior product-AI; retrieval/ranking; product co; 83% resp rate; saved 27x; search 629x
+CAND_0093912,19,1.0025,Senior Data Scientist with 5.3yrs; 4 AI/ML skills; senior product-AI; retrieval/ranking; product co; 66% resp rate; saved 56x; search 773x; active GitHub
+CAND_0009024,20,1.0007,Search Engineer with 5.2yrs; 8 AI/ML skills; senior product-AI; search/recommendation; product co; saved 16x; search 514x
+CAND_0025640,21,0.9975,AI Research Engineer with 5.6yrs; 6 AI/ML skills; senior product-AI; production ML; product co; 87% resp rate; saved 39x
+CAND_0015582,22,0.9969,ML Engineer with 4.4yrs; 8 AI/ML skills; senior product-AI; production ML; product co; 82% resp rate; saved 45x; search 715x
+CAND_0035315,23,0.9968,Data Scientist with 4.9yrs; 5 AI/ML skills; senior product-AI; retrieval/ranking; product co; 62% resp rate; saved 35x; search 725x
+CAND_0096142,24,0.9958,Applied ML Engineer with 5.0yrs; 3 AI/ML skills; senior product-AI; production ML; product co; 84% resp rate; saved 18x; search 715x; active GitHub
+CAND_0064326,25,0.9948,Search Engineer with 7.6yrs; 6 AI/ML skills; senior product-AI; production ML; product co; 94% resp rate; saved 60x; search 916x; active GitHub
+CAND_0008239,26,0.9911,AI Engineer with 4.0yrs; 9 AI/ML skills; senior product-AI; production ML; product co; 73% resp rate; saved 56x; search 763x; active GitHub
+CAND_0023215,27,0.9908,Junior ML Engineer with 4.4yrs; 4 AI/ML skills; senior product-AI; production ML; product co; saved 31x; search 700x; active GitHub
+CAND_0024466,28,0.9900,Search Engineer with 5.2yrs; 9 AI/ML skills; retrieval/ranking; senior product-AI; product co
+CAND_0069248,29,0.9883,AI Research Engineer with 5.4yrs; 5 AI/ML skills; senior product-AI; production ML; product co; 75% resp rate; saved 17x; active GitHub
+CAND_0041568,30,0.9874,Search Engineer with 5.2yrs; 8 AI/ML skills; senior product-AI; retrieval/ranking; product co; 52% resp rate; saved 43x; search 718x
+CAND_0075574,31,0.9869,Machine Learning Engineer with 5.7yrs; 9 AI/ML skills; senior product-AI; production ML; product co; 58% resp rate; saved 24x; search 625x
+CAND_0016659,32,0.9846,ML Engineer with 4.4yrs; 4 AI/ML skills; senior product-AI; production ML; product co; 89% resp rate; saved 37x
+CAND_0052682,33,0.9841,NLP Engineer with 6.6yrs; 8 AI/ML skills; senior product-AI; production ML; product co; 88% resp rate; saved 16x; search 850x; active GitHub
+CAND_0018549,34,0.9815,Recommendation Systems Engineer with 6.8yrs; 6 AI/ML skills; search/recommendation; retrieval/ranking; product co; 73% resp rate; saved 15x; search 631x; active GitHub
+CAND_0036863,35,0.9803,Senior Data Scientist with 4.3yrs; 3 AI/ML skills; senior product-AI; retrieval/ranking; product co; saved 57x; search 987x
+CAND_0079387,36,0.9792,AI Engineer with 6.9yrs; 6 AI/ML skills; senior product-AI; production ML; product co; 81% resp rate; saved 22x; active GitHub
+CAND_0075249,37,0.9783,Applied ML Engineer with 6.2yrs; 3 AI/ML skills; senior product-AI; production ML; product co; 82% resp rate; search 850x
+CAND_0016163,38,0.9751,Applied ML Engineer with 6.7yrs; 9 AI/ML skills; production ML; senior product-AI; product co; 72% resp rate; saved 13x; search 1020x; active GitHub
+CAND_0067866,39,0.9731,Senior Software Engineer (ML) with 6.4yrs; 2 AI/ML skills; senior product-AI; retrieval/ranking; product co; 79% resp rate; saved 26x
+CAND_0061339,40,0.9725,Search Engineer with 4.2yrs; 5 AI/ML skills; senior product-AI; search/recommendation; product co; 90% resp rate; search 1023x; active GitHub
+CAND_0028793,41,0.9706,Search Engineer with 7.2yrs; 3 AI/ML skills; senior product-AI; production ML; product co; 57% resp rate; saved 43x; search 1096x; active GitHub
+CAND_0046132,42,0.9699,AI Research Engineer with 4.3yrs; 4 AI/ML skills; senior product-AI; production ML; product co; 94% resp rate; saved 30x
+CAND_0030348,43,0.9697,Machine Learning Engineer with 4.5yrs; 7 AI/ML skills; senior product-AI; production ML; product co; 54% resp rate; saved 18x; search 593x
+CAND_0065786,44,0.9670,AI Specialist with 4.9yrs; 2 AI/ML skills; senior product-AI; production ML; product co; 89% resp rate; saved 32x; active GitHub
+CAND_0010685,45,0.9661,NLP Engineer with 6.7yrs; 7 AI/ML skills; senior product-AI; production ML; product co; 83% resp rate; saved 46x; search 779x
+CAND_0021827,46,0.9661,AI Research Engineer with 4.4yrs; 4 AI/ML skills; senior product-AI; retrieval/ranking; product co; saved 11x; active GitHub
+CAND_0037160,47,0.9661,Data Scientist with 6.0yrs; 8 AI/ML skills; senior product-AI; production ML; product co; 74% resp rate
+CAND_0096209,48,0.9655,ML Engineer with 4.2yrs; 3 AI/ML skills; senior product-AI; production ML; product co; 90% resp rate; saved 21x
+CAND_0062247,49,0.9635,AI Engineer with 7.3yrs; 6 AI/ML skills; senior product-AI; production ML; product co; 78% resp rate; search 839x; active GitHub
+CAND_0087766,50,0.9635,Computer Vision Engineer with 5.1yrs; 7 AI/ML skills; senior product-AI; production ML; product co; active GitHub
+CAND_0040887,51,0.9630,Machine Learning Engineer with 4.7yrs; 6 AI/ML skills; senior product-AI; production ML; product co; 84% resp rate; saved 50x; search 846x
+CAND_0052335,52,0.9572,Applied ML Engineer with 6.4yrs; 8 AI/ML skills; senior product-AI; production ML; product co; 79% resp rate; saved 35x
+CAND_0006557,53,0.9566,NLP Engineer with 7.9yrs; 8 AI/ML skills; senior product-AI; production ML; product co; 63% resp rate; saved 53x
+CAND_0064904,54,0.9558,AI Engineer with 4.9yrs; 10 AI/ML skills; production ML; senior product-AI; product co; 78% resp rate; saved 39x; search 942x; active GitHub
+CAND_0097176,55,0.9556,ML Engineer with 5.9yrs; 4 AI/ML skills; senior product-AI; production ML; product co; 76% resp rate; saved 15x
+CAND_0086893,56,0.9543,ML Engineer with 3.9yrs; 8 AI/ML skills; senior product-AI; production ML; product co; 90% resp rate; saved 34x
+CAND_0052328,57,0.9539,Recommendation Systems Engineer with 6.5yrs; 8 AI/ML skills; production ML; senior product-AI; product co; 79% resp rate; saved 31x; search 627x; active GitHub
+CAND_0029367,58,0.9527,Senior Data Scientist with 5.7yrs; 9 AI/ML skills; senior product-AI; production ML; product co; 77% resp rate; search 515x
+CAND_0030827,59,0.9526,Senior Data Scientist with 5.4yrs; 9 AI/ML skills; senior product-AI; retrieval/ranking; product co; 52% resp rate; saved 50x; search 990x; active GitHub
+CAND_0072232,60,0.9522,ML Engineer with 4.0yrs; 6 AI/ML skills; senior product-AI; production ML; product co; 58% resp rate; saved 41x
+CAND_0072660,61,0.9511,Machine Learning Engineer with 7.1yrs; 5 AI/ML skills; production ML; senior product-AI; product co; 53% resp rate; saved 31x; search 1003x
+CAND_0050454,62,0.9503,AI Engineer with 6.8yrs; 7 AI/ML skills; senior product-AI; production ML; product co; 77% resp rate; saved 30x
+CAND_0041610,63,0.9500,Recommendation Systems Engineer with 6.7yrs; 9 AI/ML skills; production ML; retrieval/ranking; product co; 52% resp rate; saved 18x; search 717x; active GitHub
+CAND_0070398,64,0.9500,Machine Learning Engineer with 7.2yrs; 8 AI/ML skills; senior product-AI; production ML; product co; 60% resp rate; saved 13x; active GitHub
+CAND_0002120,65,0.9488,ML Engineer with 6.5yrs; 6 AI/ML skills; senior product-AI; production ML; product co; 72% resp rate; saved 29x; search 691x; active GitHub
+CAND_0087264,66,0.9473,Junior ML Engineer with 4.0yrs; 4 AI/ML skills; senior product-AI; production ML; product co; 79% resp rate; saved 19x
+CAND_0039383,67,0.9467,Applied ML Engineer with 7.1yrs; 6 AI/ML skills; senior product-AI; production ML; product co; 61% resp rate; saved 34x; active GitHub
+CAND_0018722,68,0.9454,Recommendation Systems Engineer with 6.6yrs; 6 AI/ML skills; senior product-AI; production ML; product co; 79% resp rate; saved 16x; search 1034x; active GitHub
+CAND_0015065,69,0.9438,AI Research Engineer with 3.9yrs; 4 AI/ML skills; senior product-AI; production ML; product co; 84% resp rate; saved 33x; search 691x
+CAND_0009691,70,0.9437,Applied ML Engineer with 6.2yrs; 7 AI/ML skills; senior product-AI; production ML; product co; 64% resp rate; active GitHub
+CAND_0053605,71,0.9429,Senior Software Engineer (ML) with 6.9yrs; 4 AI/ML skills; senior product-AI; production ML; product co; 88% resp rate; saved 26x; search 553x
+CAND_0068932,72,0.9423,ML Engineer with 5.2yrs; 5 AI/ML skills; senior product-AI; production ML; product co; 82% resp rate; saved 26x; search 679x; active GitHub
+CAND_0051292,73,0.9421,Applied ML Engineer with 5.2yrs; 7 AI/ML skills; senior product-AI; production ML; product co; 52% resp rate; active GitHub
+CAND_0078002,74,0.9421,Machine Learning Engineer with 6.3yrs; 8 AI/ML skills; senior product-AI; production ML; product co; 86% resp rate; search 798x; active GitHub
+CAND_0099806,75,0.9407,AI Engineer with 4.6yrs; 7 AI/ML skills; senior product-AI; production ML; product co; 76% resp rate; active GitHub
+CAND_0010603,76,0.9402,ML Engineer with 5.3yrs; 6 AI/ML skills; senior product-AI; production ML; product co; 94% resp rate; saved 45x; search 700x; active GitHub
+CAND_0058688,77,0.9397,AI Engineer with 6.7yrs; 7 AI/ML skills; production ML; senior product-AI; product co; 74% resp rate; saved 36x
+CAND_0096104,78,0.9371,AI Specialist with 7.0yrs; 4 AI/ML skills; senior product-AI; production ML; product co; active GitHub
+CAND_0076904,79,0.9369,Senior Data Scientist with 4.2yrs; 10 AI/ML skills; senior product-AI; retrieval/ranking; product co; 54% resp rate; saved 65x; search 695x
+CAND_0044262,80,0.9364,Data Scientist with 6.9yrs; 4 AI/ML skills; senior product-AI; production ML; product co; 73% resp rate
+CAND_0071974,81,0.9362,Senior AI Engineer with 7.8yrs; 6 AI/ML skills; senior product-AI; retrieval/ranking; product co; 76% resp rate; saved 50x; active GitHub
+CAND_0095528,82,0.9362,Senior Data Scientist with 5.3yrs; 9 AI/ML skills; senior product-AI; production ML; product co; 55% resp rate; saved 25x
+CAND_0069905,83,0.9360,Applied ML Engineer with 6.6yrs; 7 AI/ML skills; senior product-AI; production ML; product co; 78% resp rate; saved 57x
+CAND_0099269,84,0.9357,Data Scientist with 5.5yrs; 3 AI/ML skills; senior product-AI; retrieval/ranking; product co
+CAND_0054703,85,0.9354,Computer Vision Engineer with 6.8yrs; 4 AI/ML skills; senior product-AI; production ML; product co; saved 31x; search 580x
+CAND_0058300,86,0.9351,AI Research Engineer with 4.5yrs; 6 AI/ML skills; senior product-AI; production ML; product co; 52% resp rate; saved 28x
+CAND_0090155,87,0.9351,ML Engineer with 5.8yrs; 1 AI/ML skills; senior product-AI; production ML; product co; 64% resp rate; saved 27x; search 751x; active GitHub
+CAND_0070485,88,0.9350,Search Engineer with 6.4yrs; 3 AI/ML skills; senior product-AI; production ML; product co; saved 45x; search 855x
+CAND_0036520,89,0.9346,Data Scientist with 4.2yrs; 6 AI/ML skills; senior product-AI; production ML; product co; saved 24x; search 791x; active GitHub
+CAND_0007596,90,0.9344,Junior ML Engineer with 4.4yrs; 6 AI/ML skills; senior product-AI; production ML; product co; 86% resp rate; saved 15x; search 722x
+CAND_0000422,91,0.9341,AI Research Engineer with 6.3yrs; 2 AI/ML skills; senior product-AI; production ML; product co; 79% resp rate; saved 18x
+CAND_0017648,92,0.9334,AI Specialist with 4.0yrs; 4 AI/ML skills; senior product-AI; production ML; product co; 62% resp rate; saved 43x
+CAND_0007460,93,0.9326,AI Engineer with 4.7yrs; 8 AI/ML skills; senior product-AI; retrieval/ranking; product co; saved 11x; search 1047x; active GitHub
+CAND_0084819,94,0.9325,Search Engineer with 4.5yrs; 9 AI/ML skills; senior product-AI; production ML; product co; 74% resp rate; saved 50x; search 1056x; active GitHub
+CAND_0061244,95,0.9315,Computer Vision Engineer with 6.2yrs; 4 AI/ML skills; senior product-AI; production ML; product co; saved 19x; search 612x; active GitHub
+CAND_0066376,96,0.9315,Applied ML Engineer with 5.7yrs; 9 AI/ML skills; senior product-AI; production ML; product co; 51% resp rate; saved 59x
+CAND_0012888,97,0.9311,Junior ML Engineer with 6.4yrs; 4 AI/ML skills; senior product-AI; production ML; product co; saved 26x; search 721x
+CAND_0076995,98,0.9311,AI Research Engineer with 4.4yrs; 6 AI/ML skills; senior product-AI; retrieval/ranking; product co; 73% resp rate; saved 19x
+CAND_0013613,99,0.9302,Machine Learning Engineer with 4.7yrs; 7 AI/ML skills; senior product-AI; production ML; product co; 73% resp rate; saved 51x; search 747x; active GitHub
+CAND_0054546,100,0.9302,AI Research Engineer with 4.9yrs; 3 AI/ML skills; senior product-AI; production ML; product co; 92% resp rate; saved 41x; active GitHub

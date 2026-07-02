@@ -7,6 +7,6 @@ candidates.jsonl
 sample_candidates.json
 sample_submission.csv
 gt_labels.json
-models/
+models/minilm-onnx/.cache/
 _Debug_*
 .DS_Store
